@@ -1,0 +1,68 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Basic helpers
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(uid) { return isSignedIn() && request.auth.uid == uid; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    // User validation
+    function isValidUser(data) {
+      return data.size() == 2
+        && data.keys().hasAll(['email', 'createdAt'])
+        && data.email is string && data.email.size() <= 100
+        && request.auth.token.email_verified == true
+        && data.email == request.auth.token.email
+        && data.createdAt == request.time;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    match /users/{userId} {
+      // User can read their own profile
+      allow read: if isOwner(userId) && isValidId(userId);
+      
+      // User can create their profile
+      allow create: if isOwner(userId) && isValidId(userId) && isValidUser(incoming());
+      
+      // User cannot update their core system details easily, but let's allow basic profile updates if needed
+      // Currently no updates are supported based on the simple model
+      allow update: if false;
+      allow delete: if false;
+
+      match /tasks/{taskId} {
+         function isValidTaskCreate(data) {
+           return (data.size() == 5 || data.size() == 6)
+             && data.keys().hasAll(['ownerId', 'title', 'completed', 'createdAt', 'type'])
+             && (!('tag' in data) || (data.tag is string && data.tag.size() <= 100))
+             && data.ownerId == request.auth.uid
+             && data.title is string && data.title.size() > 0 && data.title.size() <= 200
+             && data.completed is bool
+             && data.type is string && data.type.size() <= 50
+             && data.createdAt == request.time;
+         }
+
+         allow get: if isOwner(userId) && isValidId(userId) && isValidId(taskId);
+         allow list: if isOwner(userId) && isValidId(userId);
+         
+         // Using tests like exists() would check if parent user exists.
+         allow create: if isOwner(userId) && isValidId(userId) && isValidId(taskId)
+                       && exists(/databases/$(database)/documents/users/$(userId))
+                       && isValidTaskCreate(incoming());
+                       
+         allow update: if isOwner(userId) && isValidId(userId) && isValidId(taskId)
+                       && incoming().diff(existing()).affectedKeys().hasOnly(['completed', 'title', 'tag'])
+                       && ( !('completed' in incoming().diff(existing()).affectedKeys()) || incoming().completed is bool )
+                       && ( !('tag' in incoming().diff(existing()).affectedKeys()) || (incoming().tag is string && incoming().tag.size() <= 100) )
+                       && ( !('title' in incoming().diff(existing()).affectedKeys()) || (incoming().title is string && incoming().title.size() <= 200) )
+                       && incoming().ownerId == existing().ownerId;
+                       
+         allow delete: if isOwner(userId) && isValidId(userId) && isValidId(taskId);
+      }
+    }
+  }
+}
