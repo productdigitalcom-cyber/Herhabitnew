@@ -4,7 +4,7 @@ service cloud.firestore {
     // Basic helpers
     function isSignedIn() { return request.auth != null; }
     function isOwner(uid) { return isSignedIn() && request.auth.uid == uid; }
-    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_-]+$'); }
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
 
@@ -62,6 +62,99 @@ service cloud.firestore {
                        && incoming().ownerId == existing().ownerId;
                        
          allow delete: if isOwner(userId) && isValidId(userId) && isValidId(taskId);
+      }
+
+      match /recipes/{recipeId} {
+         function isValidRecipeCreate(data) {
+           return data.keys().hasAll(['ownerId', 'name', 'tag', 'image', 'time', 'ingredients', 'instructions', 'createdAt'])
+             && data.ownerId == request.auth.uid
+             && data.name is string && data.name.size() > 0 && data.name.size() <= 200
+             && data.tag is string && data.tag.size() <= 50
+             && data.image is string && data.image.size() <= 20
+             && data.time is string && data.time.size() <= 50
+             && data.ingredients is list && data.ingredients.size() <= 100
+             && data.instructions is list && data.instructions.size() <= 100
+             && data.createdAt == request.time;
+         }
+
+         allow get: if isOwner(userId) && isValidId(userId) && isValidId(recipeId);
+         allow list: if isOwner(userId) && isValidId(userId);
+         
+         allow create: if isOwner(userId) && isValidId(userId) && isValidId(recipeId)
+                       && exists(/databases/$(database)/documents/users/$(userId))
+                       && isValidRecipeCreate(incoming());
+                       
+         allow update: if isOwner(userId) && isValidId(userId) && isValidId(recipeId)
+                       && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'tag', 'image', 'time', 'ingredients', 'instructions'])
+                       && ( !('name' in incoming().diff(existing()).affectedKeys()) || (incoming().name is string && incoming().name.size() <= 200) )
+                       && ( !('tag' in incoming().diff(existing()).affectedKeys()) || (incoming().tag is string && incoming().tag.size() <= 50) )
+                       && ( !('image' in incoming().diff(existing()).affectedKeys()) || (incoming().image is string && incoming().image.size() <= 20) )
+                       && ( !('time' in incoming().diff(existing()).affectedKeys()) || (incoming().time is string && incoming().time.size() <= 50) )
+                       && ( !('ingredients' in incoming().diff(existing()).affectedKeys()) || (incoming().ingredients is list && incoming().ingredients.size() <= 100) )
+                       && ( !('instructions' in incoming().diff(existing()).affectedKeys()) || (incoming().instructions is list && incoming().instructions.size() <= 100) )
+                       && incoming().ownerId == existing().ownerId;
+                       
+         allow delete: if isOwner(userId) && isValidId(userId) && isValidId(recipeId);
+      }
+
+      match /ideas/{ideaId} {
+         function isValidIdeaCreate(data) {
+           return data.keys().hasAll(['ownerId', 'title', 'platform', 'icon', 'color', 'done', 'createdAt'])
+             && data.ownerId == request.auth.uid
+             && data.title is string && data.title.size() > 0 && data.title.size() <= 200
+             && data.platform is string && data.platform.size() <= 50
+             && data.icon is string && data.icon.size() <= 20
+             && data.color is string && data.color.size() <= 100
+             && data.done is bool
+             && data.createdAt == request.time;
+         }
+
+         allow get: if isOwner(userId) && isValidId(userId) && isValidId(ideaId);
+         allow list: if isOwner(userId) && isValidId(userId);
+         
+         allow create: if isOwner(userId) && isValidId(userId) && isValidId(ideaId)
+                       && exists(/databases/$(database)/documents/users/$(userId))
+                       && isValidIdeaCreate(incoming());
+                       
+         allow update: if isOwner(userId) && isValidId(userId) && isValidId(ideaId)
+                       && incoming().diff(existing()).affectedKeys().hasOnly(['done', 'title', 'platform', 'icon', 'color'])
+                       && ( !('done' in incoming().diff(existing()).affectedKeys()) || incoming().done is bool )
+                       && ( !('title' in incoming().diff(existing()).affectedKeys()) || (incoming().title is string && incoming().title.size() <= 200) )
+                       && ( !('platform' in incoming().diff(existing()).affectedKeys()) || (incoming().platform is string && incoming().platform.size() <= 50) )
+                       && ( !('icon' in incoming().diff(existing()).affectedKeys()) || (incoming().icon is string && incoming().icon.size() <= 20) )
+                       && ( !('color' in incoming().diff(existing()).affectedKeys()) || (incoming().color is string && incoming().color.size() <= 100) )
+                       && incoming().ownerId == existing().ownerId;
+                       
+         allow delete: if isOwner(userId) && isValidId(userId) && isValidId(ideaId);
+      }
+
+      match /daily_logs/{dateStr} {
+         function isValidDailyLogCreate(data) {
+           return (data.size() == 4 || data.size() == 5 || data.size() == 6)
+             && data.keys().hasAll(['ownerId', 'dateLabel', 'water', 'updatedAt'])
+             && data.ownerId == request.auth.uid
+             && data.dateLabel is string && data.dateLabel.size() <= 20
+             && data.water is number && data.water >= 0 && data.water <= 20
+             && (!('mood' in data) || (data.mood is string && data.mood.size() <= 20))
+             && (!('focus' in data) || (data.focus is string && data.focus.size() <= 200))
+             && data.updatedAt == request.time;
+         }
+
+         allow get: if isOwner(userId) && isValidId(userId);
+         allow list: if isOwner(userId) && isValidId(userId);
+         
+         allow create: if isOwner(userId) && isValidId(userId)
+                       && exists(/databases/$(database)/documents/users/$(userId))
+                       && isValidDailyLogCreate(incoming());
+                       
+         allow update: if isOwner(userId) && isValidId(userId)
+                       && incoming().diff(existing()).affectedKeys().hasOnly(['water', 'mood', 'focus', 'updatedAt'])
+                       && ( !('water' in incoming().diff(existing()).affectedKeys()) || (incoming().water is number && incoming().water >= 0 && incoming().water <= 20) )
+                       && ( !('mood' in incoming().diff(existing()).affectedKeys()) || (incoming().mood is string && incoming().mood.size() <= 20) )
+                       && ( !('focus' in incoming().diff(existing()).affectedKeys()) || (incoming().focus is string && incoming().focus.size() <= 200) )
+                       && incoming().updatedAt == request.time
+                       && incoming().ownerId == existing().ownerId
+                       && incoming().dateLabel == existing().dateLabel;
       }
     }
   }

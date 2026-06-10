@@ -23,6 +23,20 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["ownerId", "title", "completed", "createdAt"]
+    },
+    "DailyLog": {
+      "title": "DailyLog",
+      "description": "User's daily tracking for things like water and mood.",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string" },
+        "dateLabel": { "type": "string" },
+        "water": { "type": "number" },
+        "mood": { "type": "string" },
+        "focus": { "type": "string", "description": "The main goal or focus for the day" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "dateLabel", "water", "updatedAt"]
     }
   },
   "firestore": {
@@ -33,6 +47,10 @@
     "/users/{userId}/tasks/{taskId}": {
       "schema": { "$ref": "#/entities/Task" },
       "description": "Tasks belonging to the user"
+    },
+    "/users/{userId}/daily_logs/{dateStr}": {
+      "schema": { "$ref": "#/entities/DailyLog" },
+      "description": "Daily tracking logs for a user"
     }
   }
 }

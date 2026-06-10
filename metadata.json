@@ -1,6 +1,6 @@
 {
-  "name": "Remix: Remix: Remix: HerHabit",
+  "name": "HerHabit",
   "description": "Cute Productive Girl Lifestyle App - Soft life, organization, and feminine productivity planner.",
   "requestFramePermissions": [],
-  "majorCapabilities": []
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

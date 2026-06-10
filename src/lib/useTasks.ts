@@ -10,6 +10,7 @@ export interface Task {
   completed: boolean;
   type: string;
   tag?: string;
+  reminderTime?: string;
   createdAt: any;
 }
 
@@ -18,35 +19,34 @@ export function useTasks(type?: string) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!auth.currentUser) {
-      setTasks([]);
-      setLoading(false);
-      return;
-    }
+    const unsubscribeAuth = auth.onAuthStateChanged((user) => {
+      if (!user) {
+        setTasks([]);
+        setLoading(false);
+        return;
+      }
 
-    const tasksRef = collection(db, 'users', auth.currentUser.uid, 'tasks');
-    // We could add a 'where' clause here for 'type' if we wanted, but we'll filter on client since the rule doesn't enforce the where clause in list queries
-    // Actually the rule says: `allow read: if isOwner(userId) && isValidId(userId) && isValidId(taskId)` for single item, wait...
-    // The rule doesn't have an `allow list:`! It only has `allow read:` which applies to both `get` and `list`.
-    // Wait, let's just query everything and filter, or we can query with where clause.
-    // Let's just listen to all tasks to make it easy for dashboard to access everything if needed.
-    const q = query(tasksRef);
+      const tasksRef = collection(db, 'users', user.uid, 'tasks');
+      const q = query(tasksRef);
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const parsedTasks: Task[] = [];
-      snapshot.forEach((doc) => {
-        parsedTasks.push({ id: doc.id, ...doc.data() } as Task);
+      const unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
+        const parsedTasks: Task[] = [];
+        snapshot.forEach((doc) => {
+          parsedTasks.push({ id: doc.id, ...doc.data() } as Task);
+        });
+        setTasks(parsedTasks);
+        setLoading(false);
+      }, (error) => {
+        handleFirestoreError(error, OperationType.LIST, 'tasks');
       });
-      setTasks(parsedTasks);
-      setLoading(false);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'tasks');
+
+      return () => unsubscribeSnapshot();
     });
 
-    return unsubscribe;
+    return () => unsubscribeAuth();
   }, []);
 
-  const addTask = async (title: string, taskType: string, tag?: string) => {
+  const addTask = async (title: string, taskType: string, tag?: string, reminderTime?: string) => {
     if (!auth.currentUser) return;
     try {
       const taskData: any = {
@@ -58,6 +58,9 @@ export function useTasks(type?: string) {
       };
       if (tag) {
         taskData.tag = tag;
+      }
+      if (reminderTime) {
+        taskData.reminderTime = reminderTime;
       }
       const tasksRef = collection(db, 'users', auth.currentUser.uid, 'tasks');
       await addDoc(tasksRef, taskData);
@@ -76,6 +79,16 @@ export function useTasks(type?: string) {
     }
   };
 
+  const updateTask = async (taskId: string, data: Partial<Task>) => {
+    if (!auth.currentUser) return;
+    try {
+      const taskRef = doc(db, 'users', auth.currentUser.uid, 'tasks', taskId);
+      await updateDoc(taskRef, data);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `tasks/${taskId}`);
+    }
+  };
+
   const deleteTask = async (taskId: string) => {
      if (!auth.currentUser) return;
      try {
@@ -89,5 +102,5 @@ export function useTasks(type?: string) {
   // Helper to filter tasks by type
   const getTasksByType = (filterType: string) => tasks.filter(t => t.type === filterType);
 
-  return { tasks, loading, addTask, toggleTask, deleteTask, getTasksByType };
+  return { tasks, loading, addTask, toggleTask, updateTask, deleteTask, getTasksByType };
 }

@@ -42,6 +42,13 @@
 
   --shadow-cloud: 0px 30px 60px -15px rgba(255, 183, 197, 0.3);
   --shadow-cloud-lg: 0px 30px 90px rgba(255, 183, 197, 0.4);
+  
+  --animate-float-subtle: float-subtle 4s ease-in-out infinite;
+}
+
+@keyframes float-subtle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
 }
 
 @layer utilities {
@@ -62,7 +69,7 @@
 }
 
 body {
-  @apply bg-background text-on-background font-sans antialiased min-h-screen selection:bg-primary-container selection:text-transparent;
+  @apply bg-background text-on-background font-sans antialiased min-h-screen selection:bg-primary-container selection:text-on-primary-container;
 }
 
 h1, h2, h3, h4, h5, h6 {
