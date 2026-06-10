@@ -7,7 +7,7 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(express.json());
+  app.use(express.json({ limit: "50mb" }));
 
   // API handler for Gemini Recipe search
   app.post("/api/recipe/search", async (req, res) => {
@@ -65,6 +65,78 @@ async function startServer() {
       }
     } catch (err: any) {
       console.error("Recipe generation error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // API handler for Gemini Recipe scan from image
+  app.post("/api/recipe/scan", async (req, res) => {
+    try {
+      const { imageBase64 } = req.body;
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({ error: "GEMINI_API_KEY is not configured" });
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
+      
+      const recipeSchema: Schema = {
+        type: Type.OBJECT,
+        properties: {
+          id: { type: Type.STRING },
+          name: { type: Type.STRING },
+          cuisine: { type: Type.STRING },
+          prepTime: { type: Type.STRING },
+          cookTime: { type: Type.STRING },
+          servings: { type: Type.INTEGER },
+          difficulty: { type: Type.STRING },
+          ingredients: { type: Type.ARRAY, items: { type: Type.STRING } },
+          instructions: { type: Type.ARRAY, items: { type: Type.STRING } },
+          tips: { type: Type.ARRAY, items: { type: Type.STRING } },
+          nutrition: { 
+            type: Type.OBJECT,
+            properties: {
+              calories: { type: Type.INTEGER },
+              protein: { type: Type.STRING },
+              carbs: { type: Type.STRING },
+              fat: { type: Type.STRING }
+            }
+          }
+        },
+        required: ["id", "name", "cuisine", "prepTime", "cookTime", "servings", "difficulty", "ingredients", "instructions", "tips"],
+      };
+
+      const prompt = `Analyze this image of a refrigerator or ingredients. 
+      Identify the edible ingredients visible and generate a realistic, delicious recipe using some or all of these ingredients. 
+      Make sure to provide cuisine origin, prep time, cook time, servings, difficulty, ingredients list, step-by-step instructions, tips and variations, and nutritional information if possible.`;
+
+      // Extract base64 data without the data:image/... base64 prefix if present
+      const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, "");
+
+      const response = await ai.models.generateContent({
+        model: "gemini-1.5-flash",
+        contents: [
+          prompt,
+          {
+            inlineData: {
+              data: base64Data,
+              mimeType: "image/jpeg"
+            }
+          }
+        ],
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: recipeSchema,
+        }
+      });
+
+      if (response.text) {
+        res.json(JSON.parse(response.text));
+      } else {
+        res.status(500).json({ error: "No text returned from Gemini API" });
+      }
+    } catch (err: any) {
+      console.error("Recipe scan error:", err);
       res.status(500).json({ error: err.message });
     }
   });

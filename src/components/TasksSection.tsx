@@ -125,9 +125,6 @@ export default function TasksSection({ onBack }: { onBack?: () => void }) {
           
           if ('Notification' in window && Notification.permission === 'granted') {
              new Notification('Cleaning Reminder', { body: `Time to: ${t.title}` });
-          } else {
-             // Fallback for previews or no perm
-             setTimeout(() => alert(`🔔 Reminder: It's time to ${t.title}`), 100);
           }
         }
       });

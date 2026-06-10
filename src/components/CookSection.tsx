@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChefHat, Search, Heart, Clock, Users, Flame, ChevronLeft, Send, Sparkles, History, Share2, Printer } from 'lucide-react';
+import { ChefHat, Search, Heart, Clock, Users, Flame, ChevronLeft, Send, Sparkles, History, Share2, Printer, Camera } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import { useTranslation } from '../lib/i18n';
@@ -115,6 +115,45 @@ export default function CookSection() {
     }
   };
 
+  const scanFridge = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setLoading(true);
+    setErrorMsg(null);
+    setSearchQuery("Scanning fridge...");
+
+    try {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64String = reader.result as string;
+        
+        const res = await fetch("/api/recipe/scan", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ imageBase64: base64String })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          setRecipes(Array.isArray(data) ? data : [data]);
+          setSearchQuery(data.name || "Fridge Recipe");
+        } else {
+          const data = await res.json();
+          setErrorMsg(data.error || "Failed to scan ingredients. Please try again.");
+          setSearchQuery("");
+        }
+        setLoading(false);
+      };
+      reader.readAsDataURL(file);
+    } catch(err: any) {
+      console.error(err);
+      setErrorMsg(err.message || "Failed to read image.");
+      setLoading(false);
+      setSearchQuery("");
+    }
+  };
+
   const sendChatMessage = async () => {
     if (!chatMessage.trim() || !selectedRecipe) return;
     const msg = chatMessage.trim();
@@ -192,7 +231,7 @@ export default function CookSection() {
           </p>
 
           <div className="bg-surface-container hover:bg-surface-container-high transition-colors rounded-3xl flex items-center px-5 py-4 gap-4 border border-outline-variant/30">
-            <Search size={22} className="text-on-surface-variant" />
+            <Search size={22} className="text-on-surface-variant shrink-0" />
             <input
               type="text"
               placeholder={t("Italian, Vegan, Chicken Tajine...")}
@@ -201,10 +240,24 @@ export default function CookSection() {
               onKeyDown={(e) => e.key === 'Enter' && searchRecipe(searchQuery)}
               className="bg-transparent border-none outline-none text-[16px] w-full text-on-surface placeholder:text-on-surface-variant/70 font-sans font-medium"
             />
-            {searchQuery && (
+            
+            <label className="cursor-pointer bg-primary-container text-on-primary-container py-1.5 px-3 rounded-full text-sm font-semibold flex items-center gap-2 hover:bg-primary/20 transition-colors shrink-0">
+              <Camera size={16} /> 
+              <span className="hidden sm:inline">{t("Scan Fridge")}</span>
+              <input 
+                type="file" 
+                accept="image/*" 
+                capture="environment"
+                className="hidden" 
+                onChange={scanFridge} 
+                disabled={loading}
+              />
+            </label>
+
+            {searchQuery && searchQuery !== "Scanning fridge..." && (
               <button 
                  onClick={() => searchRecipe(searchQuery)}
-                 className="bg-primary text-on-primary py-1.5 px-4 rounded-full text-sm font-semibold"
+                 className="bg-primary text-on-primary py-1.5 px-4 rounded-full text-sm font-semibold shrink-0"
                  disabled={loading}
               >
                 {loading ? <Sparkles className="animate-spin" size={16}/> : t("Search")}
