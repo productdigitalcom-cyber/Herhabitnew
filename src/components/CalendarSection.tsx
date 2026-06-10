@@ -27,12 +27,28 @@ export default function CalendarSection({ onBack }: { onBack?: () => void }) {
   const dateFormat = "yyyy-MM-dd";
   const selectedDateStr = format(selectedDate, dateFormat);
   
-  const dailyTasks = tasks.filter(t => t.type === 'calendar_task' && t.tag === selectedDateStr);
+  const getTasksForDate = (dateStr: string) => tasks.filter(t => {
+    if (t.type === 'calendar_task' && t.tag === dateStr) return true;
+    if (t.date === dateStr) return true;
+    // Check if task doesn't have a date but was created on this date
+    if (!t.date && t.type !== 'calendar_task' && t.type !== 'habit' && t.createdAt) {
+      // Firebase timestamp has toMillis() or seconds
+      try {
+        const createdAtDate = t.createdAt?.toDate ? t.createdAt.toDate() : new Date(t.createdAt);
+        if (format(createdAtDate, dateFormat) === dateStr) return true;
+      } catch (e) {
+        return false;
+      }
+    }
+    return false;
+  });
+
+  const dailyTasks = getTasksForDate(selectedDateStr);
 
   const handleAddTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTaskTitle.trim()) return;
-    await addTask(newTaskTitle.trim(), 'calendar_task', selectedDateStr);
+    await addTask(newTaskTitle.trim(), 'calendar_task', selectedDateStr, undefined, selectedDateStr);
     setNewTaskTitle('');
   };
 
@@ -84,8 +100,9 @@ export default function CalendarSection({ onBack }: { onBack?: () => void }) {
               ))}
               {days.map((day) => {
                 const dateStr = format(day, dateFormat);
-                const hasTasks = tasks.some(t => t.type === 'calendar_task' && t.tag === dateStr);
-                const allDone = hasTasks && tasks.filter(t => t.type === 'calendar_task' && t.tag === dateStr).every(t => t.completed);
+                const dayTasks = getTasksForDate(dateStr);
+                const hasTasks = dayTasks.length > 0;
+                const allDone = hasTasks && dayTasks.every(t => t.completed);
                 const isSelected = format(selectedDate, dateFormat) === dateStr;
 
                 return (

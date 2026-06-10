@@ -25,6 +25,7 @@ export function useDailyLog() {
         return;
       }
 
+      console.log("Setting up daily log listener for", user.uid);
       const logRef = doc(db, 'users', user.uid, 'daily_logs', todayStr);
 
       const unsubscribeSnapshot = onSnapshot(logRef, (snapshot) => {

@@ -4,7 +4,7 @@ service cloud.firestore {
     // Basic helpers
     function isSignedIn() { return request.auth != null; }
     function isOwner(uid) { return isSignedIn() && request.auth.uid == uid; }
-    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_-]+$'); }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-\\.\\@]+$'); }
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
 
@@ -36,9 +36,11 @@ service cloud.firestore {
 
       match /tasks/{taskId} {
          function isValidTaskCreate(data) {
-           return (data.size() == 5 || data.size() == 6)
+           return (data.size() >= 5 && data.size() <= 8)
              && data.keys().hasAll(['ownerId', 'title', 'completed', 'createdAt', 'type'])
              && (!('tag' in data) || (data.tag is string && data.tag.size() <= 100))
+             && (!('reminderTime' in data) || (data.reminderTime is string && data.reminderTime.size() <= 50))
+             && (!('date' in data) || (data.date is string && data.date.size() <= 50))
              && data.ownerId == request.auth.uid
              && data.title is string && data.title.size() > 0 && data.title.size() <= 200
              && data.completed is bool
@@ -55,9 +57,11 @@ service cloud.firestore {
                        && isValidTaskCreate(incoming());
                        
          allow update: if isOwner(userId) && isValidId(userId) && isValidId(taskId)
-                       && incoming().diff(existing()).affectedKeys().hasOnly(['completed', 'title', 'tag'])
+                       && incoming().diff(existing()).affectedKeys().hasOnly(['completed', 'title', 'tag', 'reminderTime', 'date'])
                        && ( !('completed' in incoming().diff(existing()).affectedKeys()) || incoming().completed is bool )
                        && ( !('tag' in incoming().diff(existing()).affectedKeys()) || (incoming().tag is string && incoming().tag.size() <= 100) )
+                       && ( !('reminderTime' in incoming().diff(existing()).affectedKeys()) || (incoming().reminderTime is string && incoming().reminderTime.size() <= 50) )
+                       && ( !('date' in incoming().diff(existing()).affectedKeys()) || (incoming().date is string && incoming().date.size() <= 50) )
                        && ( !('title' in incoming().diff(existing()).affectedKeys()) || (incoming().title is string && incoming().title.size() <= 200) )
                        && incoming().ownerId == existing().ownerId;
                        

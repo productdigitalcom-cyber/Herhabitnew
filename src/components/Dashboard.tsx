@@ -184,7 +184,7 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (id: string) =>
         </div>
 
         <div 
-          onClick={() => onNavigate?.('wellness')}
+          onClick={() => onNavigate?.('habits')}
           className="md:col-span-6 lg:col-span-4 glass-card p-6 flex flex-col items-center justify-center cursor-pointer hover:scale-[1.02] hover:shadow-md transition-all duration-300 min-h-[160px] group border-transparent hover:border-primary/20"
         >
           <div className="w-16 h-16 bg-primary-container/30 text-primary rounded-full flex items-center justify-center mb-4 group-hover:bg-primary-container transition-colors shadow-sm">

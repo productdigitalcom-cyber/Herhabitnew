@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Heart, Activity, Book, Plus, Flame, Moon, Baby, CheckCircle2, Circle, Calendar, Trash2, Camera } from "lucide-react";
+import { Heart, Activity, Book, Plus, Flame, Moon, Baby, CheckCircle2, Circle, Calendar, Trash2, Camera, Wand2, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "../lib/utils";
 import { useTranslation } from "../lib/i18n";
@@ -11,9 +11,68 @@ export default function WellnessSection() {
   const { tasks, addTask, toggleTask } = useTasks();
   const habitTasks = tasks.filter(t => t.type === 'habit');
   
-  const [activeTab, setActiveTab] = useState<"health" | "family" | "routine" | "habits">(
-    "health",
-  );
+  const [activeTab, setActiveTab] = useState<"health" | "family" | "routine" | "habits">("health");
+
+  const [smartInput, setSmartInput] = useState("");
+  const [isSmartLoading, setIsSmartLoading] = useState(false);
+
+  const [healthStats, setHealthStats] = useState(() => {
+    const saved = localStorage.getItem('healthStats');
+    return saved ? JSON.parse(saved) : { steps: 6540, sleepHours: 7, sleepMinutes: 20, workout: "Pilates & Stretching" };
+  });
+
+  const handleSmartSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!smartInput.trim() || isSmartLoading) return;
+
+    setIsSmartLoading(true);
+    try {
+      const response = await fetch("/api/wellness/parse", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: smartInput }),
+      });
+      const data = await response.json();
+      
+      if (data && data.action) {
+         if (data.action === "ADD_HABIT" && data.habitName) {
+            await addTask(data.habitName, "habit");
+            setActiveTab("habits");
+         } else if (data.action === "ADD_ROUTINE" && data.routineName && data.routineTime) {
+            setRoutines(prev => [...prev, {
+              time: data.routineTime,
+              name: data.routineName,
+              description: "",
+              done: false
+            }]);
+            setActiveTab("routine");
+         } else if (data.action === "ADD_KID_SCHEDULE" && data.kidName && data.kidActivity && data.kidTime) {
+            setWomenSchedule(prev => [...prev, {
+               name: data.kidName,
+               color: "bg-tertiary-container/40 text-tertiary",
+               time: data.kidTime,
+               activity: data.kidActivity,
+               icon: <Activity size={16} />
+            }]);
+            setActiveTab("family");
+         } else if (data.action === "LOG_HEALTH" && data.health) {
+            const newStats = { ...healthStats };
+            if (data.health.steps) newStats.steps = data.health.steps;
+            if (data.health.sleepHours !== undefined) newStats.sleepHours = data.health.sleepHours;
+            if (data.health.sleepMinutes !== undefined) newStats.sleepMinutes = data.health.sleepMinutes;
+            if (data.health.workout) newStats.workout = data.health.workout;
+            setHealthStats(newStats);
+            localStorage.setItem('healthStats', JSON.stringify(newStats));
+            setActiveTab("health");
+         }
+      }
+      setSmartInput("");
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsSmartLoading(false);
+    }
+  };
 
   const [familyMembers, setFamilyMembers] = useState(() => {
     const saved = localStorage.getItem('familyMembers');
@@ -192,6 +251,25 @@ export default function WellnessSection() {
         </p>
       </header>
 
+      {/* AI Smart Input */}
+      <form onSubmit={handleSmartSubmit} className="relative">
+        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+          {isSmartLoading ? (
+            <Sparkles size={20} className="text-primary animate-spin" />
+          ) : (
+            <Wand2 size={20} className="text-primary" />
+          )}
+        </div>
+        <input 
+          type="text" 
+          value={smartInput}
+          onChange={(e) => setSmartInput(e.target.value)}
+          disabled={isSmartLoading}
+          placeholder={t("Say: 'I walked 5k steps' or 'Lina has piano at 5' or 'Add reading habit'")}
+          className="w-full bg-surface-container-lowest/80 border border-white/40 focus:border-primary/50 text-on-surface rounded-2xl pl-12 pr-4 py-4 focus:outline-none focus:ring-1 focus:ring-primary/50 shadow-sm transition-all"
+        />
+      </form>
+
       <div className="flex flex-wrap gap-4 items-center mb-2">
         <div className="flex bg-surface-container-low/50 p-1.5 rounded-full border border-white/40 shadow-sm w-full max-w-2xl overflow-x-auto hide-scrollbar">
           {(["health", "habits", "routine", "family"] as const).map((tab) => (
@@ -226,7 +304,7 @@ export default function WellnessSection() {
                   <Flame size={16} /> {t("Steps")}
                 </div>
                 <p className="text-[34px] font-serif font-medium text-on-surface">
-                  6,540
+                  {healthStats.steps.toLocaleString()}
                   <span className="text-[15px] text-on-surface-variant font-medium ml-1 font-sans">
                     /10k
                   </span>
@@ -237,11 +315,11 @@ export default function WellnessSection() {
                   <Moon size={16} /> {t("Sleep")}
                 </div>
                 <p className="text-[34px] font-serif font-medium text-on-surface">
-                  7
+                  {healthStats.sleepHours}
                   <span className="text-[15px] text-on-surface-variant font-medium ml-1 mr-2 font-sans">
                     {t("hr")}
                   </span>
-                  20
+                  {healthStats.sleepMinutes}
                   <span className="text-[15px] text-on-surface-variant font-medium ml-1 font-sans">
                     {t("m")}
                   </span>
@@ -257,9 +335,9 @@ export default function WellnessSection() {
                 {t("Today's Workout")}
               </h3>
               <p className="text-[28px] font-serif font-medium text-on-surface mb-6 z-10 leading-tight">
-                {t("Pilates & Stretching")} <br />{" "}
+                {t(healthStats.workout.split(" ")[0])} {healthStats.workout.split(" ").slice(1).join(" ")} <br />{" "}
                 <span className="text-[15px] font-medium font-sans text-on-surface-variant">
-                  {t("20 min")}
+                  {t("Active")}
                 </span>
               </p>
               <button className="bg-gradient-to-r from-primary-container to-secondary-fixed-dim text-on-primary-container px-8 py-3 rounded-[20px] text-[12px] font-semibold uppercase tracking-[0.08em] font-sans shadow-cloud hover:opacity-90 transition-colors z-10">

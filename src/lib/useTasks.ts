@@ -11,6 +11,7 @@ export interface Task {
   type: string;
   tag?: string;
   reminderTime?: string;
+  date?: string;
   createdAt: any;
 }
 
@@ -46,7 +47,7 @@ export function useTasks(type?: string) {
     return () => unsubscribeAuth();
   }, []);
 
-  const addTask = async (title: string, taskType: string, tag?: string, reminderTime?: string) => {
+  const addTask = async (title: string, taskType: string, tag?: string, reminderTime?: string, date?: string) => {
     if (!auth.currentUser) return;
     try {
       const taskData: any = {
@@ -61,6 +62,9 @@ export function useTasks(type?: string) {
       }
       if (reminderTime) {
         taskData.reminderTime = reminderTime;
+      }
+      if (date) {
+        taskData.date = date;
       }
       const tasksRef = collection(db, 'users', auth.currentUser.uid, 'tasks');
       await addDoc(tasksRef, taskData);
