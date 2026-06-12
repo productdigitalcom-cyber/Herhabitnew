@@ -121,7 +121,7 @@ export default function Dashboard({ onNavigate }: { onNavigate?: (id: string) =>
                       className="flex-1 bg-surface-container-lowest/80 border border-white/40 rounded-xl px-4 py-2 text-[14px] text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-1 focus:ring-primary/50"
                     />
                     <button type="submit" className="bg-primary text-on-primary px-4 py-2 rounded-xl text-[14px] font-semibold flex items-center gap-2 hover:bg-primary/90 transition-colors">
-                      <Plus size={16} /> <span>{t("Add")}</span>
+                      <Plus size={16} /> <span>{t("Data Entry")}</span>
                     </button>
                  </form>
                  <div className="space-y-2 max-h-[140px] overflow-y-auto pr-2 custom-scrollbar">

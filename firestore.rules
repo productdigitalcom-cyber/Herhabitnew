@@ -53,7 +53,6 @@ service cloud.firestore {
          
          // Using tests like exists() would check if parent user exists.
          allow create: if isOwner(userId) && isValidId(userId) && isValidId(taskId)
-                       && exists(/databases/$(database)/documents/users/$(userId))
                        && isValidTaskCreate(incoming());
                        
          allow update: if isOwner(userId) && isValidId(userId) && isValidId(taskId)
@@ -85,7 +84,6 @@ service cloud.firestore {
          allow list: if isOwner(userId) && isValidId(userId);
          
          allow create: if isOwner(userId) && isValidId(userId) && isValidId(recipeId)
-                       && exists(/databases/$(database)/documents/users/$(userId))
                        && isValidRecipeCreate(incoming());
                        
          allow update: if isOwner(userId) && isValidId(userId) && isValidId(recipeId)
@@ -117,7 +115,6 @@ service cloud.firestore {
          allow list: if isOwner(userId) && isValidId(userId);
          
          allow create: if isOwner(userId) && isValidId(userId) && isValidId(ideaId)
-                       && exists(/databases/$(database)/documents/users/$(userId))
                        && isValidIdeaCreate(incoming());
                        
          allow update: if isOwner(userId) && isValidId(userId) && isValidId(ideaId)
@@ -148,7 +145,6 @@ service cloud.firestore {
          allow list: if isOwner(userId) && isValidId(userId);
          
          allow create: if isOwner(userId) && isValidId(userId)
-                       && exists(/databases/$(database)/documents/users/$(userId))
                        && isValidDailyLogCreate(incoming());
                        
          allow update: if isOwner(userId) && isValidId(userId)
