@@ -33,14 +33,13 @@ const FOOD_IMAGES = [
   "https://images.unsplash.com/photo-1482049016688-2d3e1b311543?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"
 ];
 
-const getImageForRecipe = (id: string) => {
-  let hash = 0;
-  for (let i = 0; i < id.length; i++) hash = id.charCodeAt(i) + ((hash << 5) - hash);
-  return FOOD_IMAGES[Math.abs(hash) % FOOD_IMAGES.length];
+const getImageForRecipe = (name: string) => {
+  const prompt = `A highly detailed, realistic food photography shot of a delicious plate of ${name}, beautifully plated, restaurant quality, 4k`;
+  return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=800&height=600&nologo=true`;
 };
 
 export default function CookSection() {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [recipes, setRecipes] = useState<RecipeDetails[]>([]);
@@ -95,10 +94,11 @@ export default function CookSection() {
     setSearchQuery(query);
     setErrorMsg(null);
     try {
+      const langStr = language === 'fr' ? 'French' : language === 'ar' ? 'Arabic' : 'English';
       const res = await fetch("/api/recipe/search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: query.trim() })
+        body: JSON.stringify({ query: query.trim(), language: langStr })
       });
       if (res.ok) {
         const data = await res.json();
@@ -128,10 +128,11 @@ export default function CookSection() {
       reader.onloadend = async () => {
         const base64String = reader.result as string;
         
+        const langStr = language === 'fr' ? 'French' : language === 'ar' ? 'Arabic' : 'English';
         const res = await fetch("/api/recipe/scan", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ imageBase64: base64String })
+          body: JSON.stringify({ imageBase64: base64String, language: langStr })
         });
 
         if (res.ok) {
@@ -162,13 +163,15 @@ export default function CookSection() {
     setChatLoading(true);
     
     try {
+      const langStr = language === 'fr' ? 'French' : language === 'ar' ? 'Arabic' : 'English';
       const res = await fetch("/api/recipe/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           recipe: selectedRecipe, 
           question: msg,
-          history: chatLog 
+          history: chatLog,
+          language: langStr
         })
       });
       if (res.ok) {
@@ -357,7 +360,7 @@ export default function CookSection() {
        <div className="flex-1 overflow-y-auto pb-32 space-y-8 custom-scrollbar">
           {/* Header Image & Info */}
           <div className="relative h-64 md:h-80 rounded-[32px] overflow-hidden">
-            <img src={getImageForRecipe(selectedRecipe.id || selectedRecipe.name)} alt={selectedRecipe.name} className="w-full h-full object-cover" />
+            <img src={getImageForRecipe(selectedRecipe.name)} alt={selectedRecipe.name} className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
             <div className="absolute bottom-6 left-6 right-6">
                <span className="bg-primary/90 text-on-primary text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full mb-3 inline-block">
@@ -487,7 +490,7 @@ function RecipeCard({ recipe, onClick, isFavorite, toggleFav }: { recipe: Recipe
       className="bg-surface-container-lowest border border-outline-variant/30 rounded-3xl overflow-hidden cursor-pointer hover:shadow-md transition-all group flex flex-col h-full relative"
     >
       <div className="relative h-40 overflow-hidden w-full">
-         <img src={getImageForRecipe(recipe.id || recipe.name)} alt={recipe.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+         <img src={getImageForRecipe(recipe.name)} alt={recipe.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
          <button 
            onClick={toggleFav} 
            className="absolute top-3 right-3 w-10 h-10 rounded-full bg-black/30 backdrop-blur-md flex items-center justify-center text-white hover:bg-black/50 transition-colors z-10"

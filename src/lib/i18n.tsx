@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { GoogleGenAI } from '@google/genai';
 
 type Language = 'en' | 'fr' | 'ar';
 
@@ -53,21 +52,17 @@ export const TranslationProvider: React.FC<{children: React.ReactNode}> = ({ chi
     pendingTranslations.current.clear();
     
     try {
-      const apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || (typeof process !== 'undefined' ? process.env.GEMINI_API_KEY : undefined);
-      if (!apiKey) return;
-      const ai = new GoogleGenAI({ apiKey });
-      const langName = targetLang === 'fr' ? 'French' : 'Arabic';
-      
-      const payload = JSON.stringify(texts);
-      const prompt = `Translate this JSON array of UI strings into ${langName}. Preserve the exact JSON array structure and order. Return ONLY the JSON array.\n\n${payload}`;
-      
-      const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
-        contents: prompt,
+      const response = await fetch('/api/translate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ texts, targetLang })
       });
       
-      const responseText = response.text?.replace(/```json/g, '').replace(/```/g, '').trim() || "[]";
-      const translatedTexts = JSON.parse(responseText);
+      if (!response.ok) throw new Error('Translation failed');
+      
+      const translatedTexts = await response.json();
       
       if (Array.isArray(translatedTexts) && translatedTexts.length === texts.length) {
         setDict(prev => {

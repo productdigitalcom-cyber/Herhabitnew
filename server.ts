@@ -12,7 +12,7 @@ async function startServer() {
   // API handler for Gemini Recipe search
   app.post("/api/recipe/search", async (req, res) => {
     try {
-      const { query } = req.body;
+      const { query, language = "English" } = req.body;
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) {
         return res.status(500).json({ error: "GEMINI_API_KEY is not configured" });
@@ -47,10 +47,11 @@ async function startServer() {
       };
 
       const prompt = `Generate a realistic and detailed recipe for the following search query: "${query}". 
-      Make sure to provide cuisine origin, prep time, cook time, servings, difficulty, ingredients list, step-by-step instructions, tips and variations, and nutritional information if possible.`;
+      Make sure to provide cuisine origin, prep time, cook time, servings, difficulty, ingredients list, step-by-step instructions, tips and variations, and nutritional information if possible.
+      Please respond entirely in ${language}.`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-1.5-flash",
+        model: "gemini-3.5-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -72,7 +73,7 @@ async function startServer() {
   // API handler for Gemini Recipe scan from image
   app.post("/api/recipe/scan", async (req, res) => {
     try {
-      const { imageBase64 } = req.body;
+      const { imageBase64, language = "English" } = req.body;
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) {
         return res.status(500).json({ error: "GEMINI_API_KEY is not configured" });
@@ -108,13 +109,14 @@ async function startServer() {
 
       const prompt = `Analyze this image of a refrigerator or ingredients. 
       Identify the edible ingredients visible and generate a realistic, delicious recipe using some or all of these ingredients. 
-      Make sure to provide cuisine origin, prep time, cook time, servings, difficulty, ingredients list, step-by-step instructions, tips and variations, and nutritional information if possible.`;
+      Make sure to provide cuisine origin, prep time, cook time, servings, difficulty, ingredients list, step-by-step instructions, tips and variations, and nutritional information if possible.
+      Please respond entirely in ${language}.`;
 
       // Extract base64 data without the data:image/... base64 prefix if present
       const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, "");
 
       const response = await ai.models.generateContent({
-        model: "gemini-1.5-flash",
+        model: "gemini-3.5-flash",
         contents: [
           prompt,
           {
@@ -144,7 +146,7 @@ async function startServer() {
   // API handler for recipe chat
   app.post("/api/recipe/chat", async (req, res) => {
     try {
-      const { recipe, question, history = [] } = req.body;
+      const { recipe, question, history = [], language = "English" } = req.body;
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) {
         return res.status(500).json({ error: "GEMINI_API_KEY is not configured" });
@@ -158,7 +160,8 @@ Name: ${recipe.name}
 Ingredients: ${recipe.ingredients.join(', ')}
 Instructions: ${recipe.instructions.join(' ')}
 
-Answer the user's question about this recipe concisely.`;
+Answer the user's question about this recipe concisely.
+Please respond entirely in ${language}.`;
 
       // Map over frontend history to match SDK model requirements
       // The frontend uses { role: 'user' | 'assistant', text: string }
@@ -171,7 +174,7 @@ Answer the user's question about this recipe concisely.`;
         }));
 
       const chat = ai.chats.create({
-        model: "gemini-1.5-flash",
+        model: "gemini-3.5-flash",
         config: {
           systemInstruction,
         },
@@ -183,6 +186,38 @@ Answer the user's question about this recipe concisely.`;
       res.json({ answer: response.text });
     } catch (err: any) {
       console.error("Recipe chat error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // API handler for array text translation
+  app.post("/api/translate", async (req, res) => {
+    try {
+      const { texts, targetLang } = req.body;
+      if (!texts || !Array.isArray(texts)) return res.status(400).json({ error: "Invalid texts array" });
+      
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({ error: "GEMINI_API_KEY is not configured" });
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
+      const langName = targetLang === 'fr' ? 'French' : (targetLang === 'ar' ? 'Arabic' : 'English');
+      
+      const payload = JSON.stringify(texts);
+      const prompt = `Translate this JSON array of UI strings into ${langName}. Preserve the exact JSON array structure and order. Return ONLY the JSON array.\n\n${payload}`;
+      
+      const response = await ai.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: prompt,
+      });
+      
+      const responseText = response.text?.replace(/```json/g, '').replace(/```/g, '').trim() || "[]";
+      const translatedTexts = JSON.parse(responseText);
+      
+      res.json(translatedTexts);
+    } catch (err: any) {
+      console.error("Translate error:", err);
       res.status(500).json({ error: err.message });
     }
   });
@@ -227,7 +262,7 @@ Examples:
 `;
 
       const response = await ai.models.generateContent({
-        model: "gemini-1.5-flash",
+        model: "gemini-3.5-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
