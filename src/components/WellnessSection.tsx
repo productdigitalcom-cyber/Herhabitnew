@@ -6,12 +6,15 @@ import { useTranslation } from "../lib/i18n";
 import { useTasks } from "../lib/useTasks";
 import { format, startOfWeek, addDays, isSameDay } from "date-fns";
 
+import WorkoutModal from "./WorkoutModal";
+
 export default function WellnessSection() {
   const { t } = useTranslation();
   const { tasks, addTask, toggleTask } = useTasks();
   const habitTasks = tasks.filter(t => t.type === 'habit');
   
   const [activeTab, setActiveTab] = useState<"health" | "family" | "routine" | "habits">("health");
+  const [isWorkoutModalOpen, setIsWorkoutModalOpen] = useState(false);
 
   const [smartInput, setSmartInput] = useState("");
   const [isSmartLoading, setIsSmartLoading] = useState(false);
@@ -340,7 +343,10 @@ export default function WellnessSection() {
                   {t("Active")}
                 </span>
               </p>
-              <button className="bg-gradient-to-r from-primary-container to-secondary-fixed-dim text-on-primary-container px-8 py-3 rounded-[20px] text-[12px] font-semibold uppercase tracking-[0.08em] font-sans shadow-cloud hover:opacity-90 transition-colors z-10">
+              <button 
+                onClick={() => setIsWorkoutModalOpen(true)}
+                className="bg-gradient-to-r from-primary-container to-secondary-fixed-dim text-on-primary-container px-8 py-3 rounded-[20px] text-[12px] font-semibold uppercase tracking-[0.08em] font-sans shadow-cloud hover:opacity-90 transition-colors z-10"
+              >
                 {t("Start Workout")}
               </button>
             </div>
@@ -856,6 +862,8 @@ export default function WellnessSection() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <WorkoutModal isOpen={isWorkoutModalOpen} onClose={() => setIsWorkoutModalOpen(false)} />
     </div>
   );
 }

@@ -12,7 +12,7 @@ async function startServer() {
   // API handler for Gemini Recipe search
   app.post("/api/recipe/search", async (req, res) => {
     try {
-      const { query, language = "English" } = req.body;
+      const { query } = req.body;
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) {
         return res.status(500).json({ error: "GEMINI_API_KEY is not configured" });
@@ -25,6 +25,8 @@ async function startServer() {
         properties: {
           id: { type: Type.STRING },
           name: { type: Type.STRING },
+          englishName: { type: Type.STRING, description: "The English name of the dish for image generation purposes." },
+          imageUrl: { type: Type.STRING, description: "A valid, real, high-resolution original image URL from a public internet source (like Wikimedia Commons) showing this exact dish. Return ONLY a direct URL to a JPG/PNG." },
           cuisine: { type: Type.STRING },
           prepTime: { type: Type.STRING },
           cookTime: { type: Type.STRING },
@@ -43,12 +45,14 @@ async function startServer() {
             }
           }
         },
-        required: ["id", "name", "cuisine", "prepTime", "cookTime", "servings", "difficulty", "ingredients", "instructions", "tips"],
+        required: ["id", "name", "englishName", "imageUrl", "cuisine", "prepTime", "cookTime", "servings", "difficulty", "ingredients", "instructions", "tips"],
       };
 
       const prompt = `Generate a realistic and detailed recipe for the following search query: "${query}". 
       Make sure to provide cuisine origin, prep time, cook time, servings, difficulty, ingredients list, step-by-step instructions, tips and variations, and nutritional information if possible.
-      Please respond entirely in ${language}.`;
+      Include 'englishName' for the dish name translated to English.
+      Include 'imageUrl' which MUST be a real, valid public URL of an image of this dish from the internet (e.g. from Wikimedia Commons). DO NOT use AI image generators in the URL.
+      IMPORTANT: Respond entirely in the language of the search query "${query}" (e.g., if the query is in Arabic, respond in Arabic. If the query is in French, respond in French or English. If the query is in English, respond in English).`;
 
       const response = await ai.models.generateContent({
         model: "gemini-3.5-flash",
@@ -86,6 +90,8 @@ async function startServer() {
         properties: {
           id: { type: Type.STRING },
           name: { type: Type.STRING },
+          englishName: { type: Type.STRING, description: "The English name of the dish for image generation purposes." },
+          imageUrl: { type: Type.STRING, description: "A valid, real, high-resolution original image URL from a public internet source (like Wikimedia Commons) showing this exact dish. Return ONLY a direct URL to a JPG/PNG." },
           cuisine: { type: Type.STRING },
           prepTime: { type: Type.STRING },
           cookTime: { type: Type.STRING },
@@ -104,12 +110,14 @@ async function startServer() {
             }
           }
         },
-        required: ["id", "name", "cuisine", "prepTime", "cookTime", "servings", "difficulty", "ingredients", "instructions", "tips"],
+        required: ["id", "name", "englishName", "imageUrl", "cuisine", "prepTime", "cookTime", "servings", "difficulty", "ingredients", "instructions", "tips"],
       };
 
       const prompt = `Analyze this image of a refrigerator or ingredients. 
       Identify the edible ingredients visible and generate a realistic, delicious recipe using some or all of these ingredients. 
       Make sure to provide cuisine origin, prep time, cook time, servings, difficulty, ingredients list, step-by-step instructions, tips and variations, and nutritional information if possible.
+      Include 'englishName' for the dish name translated to English.
+      Include 'imageUrl' which MUST be a real, valid public URL of an image of this dish from the internet (e.g. from Wikimedia Commons). DO NOT use AI image generators in the URL.
       Please respond entirely in ${language}.`;
 
       // Extract base64 data without the data:image/... base64 prefix if present

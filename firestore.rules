@@ -156,6 +156,15 @@ service cloud.firestore {
                        && incoming().ownerId == existing().ownerId
                        && incoming().dateLabel == existing().dateLabel;
       }
+      
+      match /settings/{settingId} {
+         allow get: if isOwner(userId) && isValidId(userId) && isValidId(settingId);
+         allow list: if isOwner(userId) && isValidId(userId);
+         
+         allow create: if isOwner(userId) && isValidId(userId) && isValidId(settingId);
+         allow update: if isOwner(userId) && isValidId(userId) && isValidId(settingId);
+         allow delete: if isOwner(userId) && isValidId(userId) && isValidId(settingId);
+      }
     }
   }
 }

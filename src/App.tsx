@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Home, ChefHat, CheckSquare, Sparkles, Briefcase, Plus, LogOut, Calendar, Globe, CheckCircle, PaintBucket } from 'lucide-react';
+import { Home, ChefHat, CheckSquare, Sparkles, Briefcase, Plus, LogOut, Calendar, Globe, CheckCircle, PaintBucket, Droplet } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Dashboard from './components/Dashboard';
 import CookSection from './components/CookSection';
@@ -10,6 +10,7 @@ import LoginSection from './components/LoginSection';
 import CalendarSection from './components/CalendarSection';
 import DailyPlannerModal from './components/DailyPlannerModal';
 import ProfileSection from './components/ProfileSection';
+import PeriodTrackerModal from './components/PeriodTrackerModal';
 import { useAuth } from './lib/AuthContext';
 import { useTranslation } from './lib/i18n';
 
@@ -18,7 +19,9 @@ type Tab = 'home' | 'food' | 'tasks' | 'habits' | 'profile' | 'work' | 'calendar
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('home');
   const [isPlannerOpen, setIsPlannerOpen] = useState(false);
+  const [isPeriodTrackerOpen, setIsPeriodTrackerOpen] = useState(false);
   const [showLanguageMenu, setShowLanguageMenu] = useState(false);
+
   const { user, loading, logOut } = useAuth();
   const { t, language, setLanguage } = useTranslation();
 
@@ -72,6 +75,13 @@ export default function App() {
 
           <div className="relative mt-auto mb-2">
             <button 
+              onClick={() => setIsPeriodTrackerOpen(true)}
+              className={`p-3 transition-colors cursor-pointer mb-2 flex items-center justify-center rounded-full hover:text-red-400 text-on-surface-variant`} 
+              title={t("Period Tracker")}
+            >
+              <Droplet size={24} />
+            </button>
+            <button 
               onClick={() => setShowLanguageMenu(!showLanguageMenu)}
               className="text-on-surface-variant hover:text-primary transition-colors cursor-pointer focus:outline-none p-3" 
               title={t("Language")}
@@ -112,6 +122,14 @@ export default function App() {
       <main className="flex-1 h-screen overflow-y-auto overflow-x-hidden p-6 md:p-12 scroll-smooth relative z-10">
         {/* Mobile Header Icons */}
         <div className="md:hidden absolute top-6 end-6 flex items-center gap-2 z-50">
+          <button 
+            onClick={() => setIsPeriodTrackerOpen(true)}
+            className={`w-10 h-10 rounded-full backdrop-blur-md flex items-center justify-center transition-colors cursor-pointer border border-white/40 shadow-sm bg-surface-container/80 text-on-surface-variant hover:text-red-400`}
+            title={t("Period Tracker")}
+          >
+            <Droplet size={18} />
+          </button>
+          
           <div className="relative">
             <button 
               onClick={() => setShowLanguageMenu(!showLanguageMenu)}
@@ -181,6 +199,7 @@ export default function App() {
       )}
 
       <DailyPlannerModal isOpen={isPlannerOpen} onClose={() => setIsPlannerOpen(false)} />
+      <PeriodTrackerModal isOpen={isPeriodTrackerOpen} onClose={() => setIsPeriodTrackerOpen(false)} />
 
       {/* Mobile Navigation */}
       <nav className="md:hidden fixed bottom-6 left-6 right-6 z-50 flex flex-col gap-4">

@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChefHat, Search, Heart, Clock, Users, Flame, ChevronLeft, Send, Sparkles, History, Share2, Printer, Camera } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import { useTranslation } from '../lib/i18n';
 
 interface RecipeDetails {
   id: string;
   name: string;
+  englishName?: string;
+  imageUrl?: string;
   cuisine: string;
   prepTime: string;
   cookTime: string;
@@ -24,15 +25,6 @@ const CATEGORIES = [
   "Vegetarian", "Vegan", "Healthy", "Quick Meals", "Traditional Recipes"
 ];
 
-// Provide some stock photos for food
-const FOOD_IMAGES = [
-  "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-  "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-  "https://images.unsplash.com/photo-1493770348161-369560ae357d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-  "https://images.unsplash.com/photo-1473093295043-cdd812d0e601?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-  "https://images.unsplash.com/photo-1482049016688-2d3e1b311543?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"
-];
-
 const getImageForRecipe = (name: string) => {
   const prompt = `A highly detailed, realistic food photography shot of a delicious plate of ${name}, beautifully plated, restaurant quality, 4k`;
   return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=800&height=600&nologo=true`;
@@ -43,8 +35,18 @@ export default function CookSection() {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [recipes, setRecipes] = useState<RecipeDetails[]>([]);
-  const [favorites, setFavorites] = useState<RecipeDetails[]>([]);
-  const [history, setHistory] = useState<RecipeDetails[]>([]);
+  const [favorites, setFavorites] = useState<RecipeDetails[]>(() => {
+    try {
+      const savedFavs = localStorage.getItem('recipe_favorites');
+      return savedFavs ? JSON.parse(savedFavs) : [];
+    } catch { return []; }
+  });
+  const [history, setHistory] = useState<RecipeDetails[]>(() => {
+    try {
+      const savedHistory = localStorage.getItem('recipe_history');
+      return savedHistory ? JSON.parse(savedHistory) : [];
+    } catch { return []; }
+  });
   
   const [selectedRecipe, setSelectedRecipe] = useState<RecipeDetails | null>(null);
   
@@ -56,11 +58,7 @@ export default function CookSection() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    // Load from local storage
-    const savedFavs = localStorage.getItem('recipe_favorites');
-    const savedHistory = localStorage.getItem('recipe_history');
-    if (savedFavs) setFavorites(JSON.parse(savedFavs));
-    if (savedHistory) setHistory(JSON.parse(savedHistory));
+    // Other mount logic if needed
   }, []);
 
   const saveToHistory = (recipe: RecipeDetails) => {
@@ -107,9 +105,10 @@ export default function CookSection() {
         const data = await res.json();
         setErrorMsg(data.error || "Failed to find recipe. Please try again.");
       }
-    } catch(e: any) {
+    } catch(e: unknown) {
       console.error(e);
-      setErrorMsg(e.message || "An unexpected error occurred.");
+      const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+      setErrorMsg(errorMessage || "An unexpected error occurred.");
     } finally {
       setLoading(false);
     }
@@ -147,9 +146,10 @@ export default function CookSection() {
         setLoading(false);
       };
       reader.readAsDataURL(file);
-    } catch(err: any) {
+    } catch(err: unknown) {
       console.error(err);
-      setErrorMsg(err.message || "Failed to read image.");
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      setErrorMsg(errorMessage || "Failed to read image.");
       setLoading(false);
       setSearchQuery("");
     }
@@ -181,7 +181,7 @@ export default function CookSection() {
          const data = await res.json();
          setChatLog(prev => [...prev, {role: "assistant", text: `I'm sorry, I encountered an error: ${data.error || 'Please try again later.'}`}]);
       }
-    } catch(e: any) {
+    } catch(e: unknown) {
       console.error(e);
       setChatLog(prev => [...prev, {role: "assistant", text: `I'm sorry, I encountered a network error. Ensure the server is running.`}]);
     } finally {
@@ -275,22 +275,7 @@ export default function CookSection() {
           )}
         </div>
 
-        {/* Categories */}
-        <div className="mb-8 overflow-x-hidden">
-          <div className="flex items-center gap-3 overflow-x-auto pb-2 custom-scrollbar">
-            {CATEGORIES.map(cat => (
-              <button
-                key={cat}
-                onClick={() => searchRecipe(cat)}
-                className="px-5 py-2.5 rounded-full text-[14px] font-medium whitespace-nowrap bg-surface-container-low text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors border border-outline-variant/20"
-              >
-                {t(cat)}
-              </button>
-            ))}
-          </div>
-        </div>
 
-        {/* Loading State */}
         {loading && (
           <div className="flex flex-col items-center justify-center py-20 text-on-surface-variant">
              <Sparkles className="animate-spin mb-4 text-primary" size={32} />
@@ -305,9 +290,9 @@ export default function CookSection() {
                <h2 className="text-[18px] font-bold text-on-surface font-sans">{t("Search Results")}</h2>
                <button onClick={() => setRecipes([])} className="text-sm font-medium text-primary">{t("Clear")}</button>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-6">
               {recipes.map((recipe, idx) => (
-                <div key={idx} className="h-[240px]">
+                <div key={idx} className="h-[320px] md:h-[380px]">
                   <RecipeCard recipe={recipe} onClick={() => openRecipe(recipe)} isFavorite={isFavorite(recipe)} toggleFav={(e) => toggleFavorite(recipe, e)} />
                 </div>
               ))}
@@ -321,9 +306,9 @@ export default function CookSection() {
             <h2 className="text-[18px] font-bold text-on-surface font-sans mb-4 flex items-center gap-2">
               <History className="text-on-surface-variant" size={20} /> {t("Recent Searches")}
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-6">
               {history.map((recipe, idx) => (
-                <div key={idx} className="h-[240px]">
+                <div key={idx} className="h-[320px] md:h-[380px]">
                   <RecipeCard recipe={recipe} onClick={() => openRecipe(recipe)} isFavorite={isFavorite(recipe)} toggleFav={(e) => toggleFavorite(recipe, e)} />
                 </div>
               ))}
@@ -360,7 +345,18 @@ export default function CookSection() {
        <div className="flex-1 overflow-y-auto pb-32 space-y-8 custom-scrollbar">
           {/* Header Image & Info */}
           <div className="relative h-64 md:h-80 rounded-[32px] overflow-hidden">
-            <img src={getImageForRecipe(selectedRecipe.name)} alt={selectedRecipe.name} className="w-full h-full object-cover" />
+            <img 
+              src={selectedRecipe.imageUrl || getImageForRecipe(selectedRecipe.englishName || selectedRecipe.name)} 
+              alt={selectedRecipe.name} 
+              className="w-full h-full object-cover" 
+              onError={(e) => { 
+                const currentSrc = e.currentTarget.src;
+                const fallbackSrc = getImageForRecipe(selectedRecipe.englishName || selectedRecipe.name);
+                if (currentSrc !== fallbackSrc) {
+                  e.currentTarget.src = fallbackSrc;
+                }
+              }}
+            />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
             <div className="absolute bottom-6 left-6 right-6">
                <span className="bg-primary/90 text-on-primary text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full mb-3 inline-block">
@@ -489,8 +485,19 @@ function RecipeCard({ recipe, onClick, isFavorite, toggleFav }: { recipe: Recipe
       onClick={onClick}
       className="bg-surface-container-lowest border border-outline-variant/30 rounded-3xl overflow-hidden cursor-pointer hover:shadow-md transition-all group flex flex-col h-full relative"
     >
-      <div className="relative h-40 overflow-hidden w-full">
-         <img src={getImageForRecipe(recipe.name)} alt={recipe.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+      <div className="relative h-56 md:h-72 overflow-hidden w-full shrink-0">
+         <img 
+           src={recipe.imageUrl || getImageForRecipe(recipe.englishName || recipe.name)} 
+           alt={recipe.name} 
+           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
+           onError={(e) => { 
+             const currentSrc = e.currentTarget.src;
+             const fallbackSrc = getImageForRecipe(recipe.englishName || recipe.name);
+             if (currentSrc !== fallbackSrc) {
+               e.currentTarget.src = fallbackSrc; 
+             }
+           }}
+         />
          <button 
            onClick={toggleFav} 
            className="absolute top-3 right-3 w-10 h-10 rounded-full bg-black/30 backdrop-blur-md flex items-center justify-center text-white hover:bg-black/50 transition-colors z-10"
@@ -506,9 +513,9 @@ function RecipeCard({ recipe, onClick, isFavorite, toggleFav }: { recipe: Recipe
            </span>
          </div>
       </div>
-      <div className="p-4 flex-1 flex flex-col justify-between gap-3">
-         <h3 className="font-bold text-[16px] text-on-surface font-sans leading-snug line-clamp-2">{recipe.name}</h3>
-         <div className="flex items-center text-[12px] font-medium text-on-surface-variant gap-4">
+      <div className="p-4 md:p-5 flex-1 flex flex-col justify-between gap-3">
+         <h3 className="font-bold text-[18px] md:text-[20px] text-on-surface font-sans leading-snug line-clamp-2">{recipe.name}</h3>
+         <div className="flex items-center text-[13px] font-medium text-on-surface-variant gap-4">
            {recipe.cookTime && <div className="flex items-center gap-1.5"><Clock size={14}/> {recipe.cookTime}</div>}
            {recipe.servings && <div className="flex items-center gap-1.5"><Users size={14}/> {recipe.servings} Servings</div>}
          </div>
